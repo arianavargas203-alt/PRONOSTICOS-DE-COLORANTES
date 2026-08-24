@@ -1,0 +1,1197 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema Integral de Control de Colorantes</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- SheetJS para exportar a Excel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- Chart.js para los gráficos -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-[#fcf8fa] min-h-screen p-4 sm:p-6 text-gray-700 font-sans">
+
+    <div class="max-w-7xl mx-auto bg-white p-4 sm:p-6 rounded-3xl shadow-xs border border-pink-100">
+        
+        <!-- Encabezado y Barra Superior -->
+        <div class="flex flex-col md:flex-row justify-between items-center mb-6 border-b border-pink-100 pb-4 gap-4">
+            <div>
+                <h1 class="text-xl sm:text-2xl font-bold text-gray-800 flex items-center gap-2">
+                    <span>🌸</span> Sistema Integral de Colorantes
+                </h1>
+                <p class="text-xs text-gray-500">Gestión avanzada de inventario, pronósticos, consumos, órdenes y abastecimiento.</p>
+            </div>
+            
+            <div class="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end">
+                <!-- Botón de Centro de Alertas con Badge -->
+                <button onclick="abrirModalAlertas()" class="relative px-3.5 py-2 rounded-2xl font-medium text-sm bg-yellow-100 text-yellow-800 hover:bg-yellow-200 transition flex items-center gap-2 shadow-2xs">
+                    <span>🔔</span> Alertas
+                    <span id="badgeAlertas" class="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full" style="display: none;">0</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Navegación de Pestañas Principales -->
+        <div class="flex flex-wrap gap-2 mb-6 bg-gray-50 p-1.5 rounded-2xl border border-pink-50">
+            <button onclick="cambiarVista('inicio')" id="navInicio" class="flex-1 min-w-[110px] py-2.5 px-4 rounded-xl font-medium text-sm bg-pink-500 text-white shadow-xs transition text-center">🏠 Inicio</button>
+            <button onclick="cambiarVista('stockConsumo')" id="navStockConsumo" class="flex-1 min-w-[130px] py-2.5 px-4 rounded-xl font-medium text-sm bg-transparent text-gray-600 hover:bg-white transition text-center">📦 Stock y consumo</button>
+            <button onclick="cambiarVista('ordenesCompra')" id="navOrdenesCompra" class="flex-1 min-w-[140px] py-2.5 px-4 rounded-xl font-medium text-sm bg-transparent text-gray-600 hover:bg-white transition text-center">🛒 Órdenes de compra</button>
+            <button onclick="cambiarVista('dashboard')" id="navDashboard" class="flex-1 min-w-[110px] py-2.5 px-4 rounded-xl font-medium text-sm bg-transparent text-gray-600 hover:bg-white transition text-center">📊 Dashboard</button>
+        </div>
+
+        <!-- Carga de Archivo BASE.xlsx (Global) -->
+        <div class="mb-6 p-4 bg-sky-50/70 rounded-2xl border border-sky-100 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div>
+                <label class="block text-sm font-semibold text-sky-900 mb-1">Cargar Archivo BASE (Inventario y Recetas Tricomia):</label>
+                <input type="file" id="inputExcel" accept=".xlsx" class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-sky-600 file:text-white hover:file:bg-sky-700 cursor-pointer">
+            </div>
+            <div id="estadoArchivo" class="text-xs text-sky-800 bg-white p-3 rounded-xl border border-sky-200 shadow-2xs flex-1 w-full text-center md:text-left">
+                ℹ️ Esperando carga del archivo BASE.xlsx con hojas RECETAS y COLORANTES...
+            </div>
+        </div>
+
+
+        <!-- ================================================================= -->
+        <!-- ================= VISTA 1: INICIO =============================== -->
+        <!-- ================================================================= -->
+        <div id="vistaInicio" class="space-y-6">
+            
+            <!-- Bloques de Registro Rápido (Pronósticos y Consumos Adicionales) -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                
+                <!-- Pronóstico de Producción -->
+                <div class="p-5 bg-purple-50/50 rounded-3xl border border-purple-100 shadow-2xs">
+                    <h2 class="text-md font-bold text-purple-900 mb-3 flex items-center gap-2">
+                        <span>💜</span> Registrar Pronóstico de Producción
+                    </h2>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Código Receta:</label>
+                            <input type="text" id="codigoReceta" placeholder="Ej. 563371" class="w-full rounded-2xl border border-purple-200 p-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-purple-300">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Kilos de Tela:</label>
+                            <input type="number" id="kilosTela" placeholder="Ej. 500" class="w-full rounded-2xl border border-purple-200 p-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-purple-300">
+                        </div>
+                    </div>
+                    <button onclick="registrarPronostico()" class="w-full bg-purple-600 text-white p-2.5 rounded-2xl hover:bg-purple-700 text-sm font-medium shadow-xs transition">Agregar Pronóstico</button>
+                </div>
+
+                <!-- Consumo Adicional Manual -->
+                <div class="p-5 bg-emerald-50/50 rounded-3xl border border-emerald-100 shadow-2xs">
+                    <div class="flex justify-between items-center mb-3">
+                        <h2 class="text-md font-bold text-emerald-900 flex items-center gap-2">
+                            <span>➕</span> Agregar Consumo Adicional
+                        </h2>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Colorante o Producto:</label>
+                            <select id="selectProductoManual" class="w-full rounded-2xl border border-emerald-200 p-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-300">
+                                <option value="">Seleccione material...</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Cantidad:</label>
+                            <input type="number" id="cantidadManual" placeholder="Ej. 5" class="w-full rounded-2xl border border-emerald-200 p-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-300">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Unidad de Medida:</label>
+                            <input type="text" id="unidadManual" value="kg" class="w-full rounded-2xl border border-emerald-200 p-2.5 text-sm bg-white">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Fecha:</label>
+                            <input type="date" id="fechaManual" class="w-full rounded-2xl border border-emerald-200 p-2.5 text-sm bg-white">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Motivo o Descripción:</label>
+                        <input type="text" id="motivoManual" placeholder="Ej. Merma, ajuste de tono..." class="w-full rounded-2xl border border-emerald-200 p-2.5 text-sm bg-white">
+                    </div>
+                    <button onclick="agregarConsumoManual()" class="w-full bg-emerald-600 text-white p-2.5 rounded-2xl hover:bg-emerald-700 text-sm font-medium shadow-xs transition">Registrar Consumo Adicional</button>
+                </div>
+
+            </div>
+
+            <!-- Listado de Pronósticos Activos (Permite Eliminar) -->
+            <div class="bg-white p-5 rounded-3xl border border-gray-100 shadow-2xs">
+                <h2 class="text-md font-bold text-gray-800 mb-3 flex items-center gap-2">
+                    <span>📋</span> Pronósticos Activos Registrados
+                </h2>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-100 text-sm">
+                        <thead class="bg-gray-50 text-gray-500 uppercase text-xs">
+                            <tr>
+                                <th class="px-4 py-3 text-left">Código Receta</th>
+                                <th class="px-4 py-3 text-right">Kilos Tela</th>
+                                <th class="px-4 py-3 text-left">Fecha Registro</th>
+                                <th class="px-4 py-3 text-center">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaPronosticosActivos" class="divide-y divide-gray-100">
+                            <tr><td colspan="4" class="px-4 py-6 text-center text-gray-400">No hay pronósticos activos registrados.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Tabla de Colorantes en Uso (Principal) -->
+            <div class="bg-white p-5 rounded-3xl border border-gray-100 shadow-2xs">
+                <div class="flex justify-between items-center mb-3">
+                    <h2 class="text-md font-bold text-gray-800 flex items-center gap-2">
+                        <span>🧪</span> Colorantes en Uso Actual y Proyección de Stock
+                    </h2>
+                    <span class="text-xs text-gray-400">Filtrado automáticamente según uso actual</span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-100 text-sm">
+                        <thead class="bg-gray-50 text-gray-500 uppercase text-xs">
+                            <tr>
+                                <th class="px-4 py-3 text-left">Estado</th>
+                                <th class="px-4 py-3 text-left">Código</th>
+                                <th class="px-4 py-3 text-left">Nombre Colorante</th>
+                                <th class="px-4 py-3 text-right">Stock Actual</th>
+                                <th class="px-4 py-3 text-right">Consumo Proyectado</th>
+                                <th class="px-4 py-3 text-right">Stock Restante</th>
+                                <th class="px-4 py-3 text-right">Stock Seguridad</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaColorantesEnUso" class="divide-y divide-gray-100">
+                            <tr><td colspan="7" class="px-4 py-6 text-center text-gray-400">Carga el archivo y agrega pronósticos para visualizar colorantes en uso.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+
+
+        <!-- ================================================================= -->
+        <!-- ================= VISTA 2: STOCK Y CONSUMO ====================== -->
+        <!-- ================================================================= -->
+        <div id="vistaStockConsumo" class="space-y-6" style="display: none;">
+            
+            <!-- Inventario Completo -->
+            <div class="bg-white p-5 rounded-3xl border border-gray-100 shadow-2xs">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-3">
+                    <div>
+                        <h2 class="text-md font-bold text-gray-800 flex items-center gap-2">
+                            <span>📦</span> Inventario Completo de Colorantes
+                        </h2>
+                        <p class="text-xs text-gray-500">Visualiza todos los colorantes, tanto en uso como inactivos.</p>
+                    </div>
+                    <button onclick="exportarStockExcel()" class="bg-emerald-600 text-white px-4 py-2 rounded-2xl hover:bg-emerald-700 text-xs font-medium shadow-xs transition flex items-center gap-1.5">
+                        <span>📥</span> Exportar Stock a Excel
+                    </button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-100 text-sm">
+                        <thead class="bg-gray-50 text-gray-500 uppercase text-xs">
+                            <tr>
+                                <th class="px-4 py-3 text-left">Código</th>
+                                <th class="px-4 py-3 text-left">Nombre</th>
+                                <th class="px-4 py-3 text-right">Stock Disponible</th>
+                                <th class="px-4 py-3 text-right">Stock Seguridad</th>
+                                <th class="px-4 py-3 text-right">Consumo Proyectado</th>
+                                <th class="px-4 py-3 text-right">Stock Restante</th>
+                                <th class="px-4 py-3 text-left">Estado Inventario</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaInventarioCompleto" class="divide-y divide-gray-100">
+                            <tr><td colspan="7" class="px-4 py-6 text-center text-gray-400">Sin datos de inventario cargados.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Historial de Movimientos -->
+            <div class="bg-white p-5 rounded-3xl border border-gray-100 shadow-2xs">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-md font-bold text-gray-800 flex items-center gap-2">
+                        <span>📜</span> Historial de Movimientos de Inventario
+                    </h2>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-100 text-sm">
+                        <thead class="bg-gray-50 text-gray-500 uppercase text-xs">
+                            <tr>
+                                <th class="px-4 py-3 text-left">Fecha</th>
+                                <th class="px-4 py-3 text-left">Colorante / Producto</th>
+                                <th class="px-4 py-3 text-left">Tipo de Movimiento</th>
+                                <th class="px-4 py-3 text-right">Cantidad</th>
+                                <th class="px-4 py-3 text-left">Relacionado (Receta/OC)</th>
+                                <th class="px-4 py-3 text-left">Motivo / Observación</th>
+                                <th class="px-4 py-3 text-right">Stock Post-Movimiento</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaHistorialMovimientos" class="divide-y divide-gray-100">
+                            <tr><td colspan="7" class="px-4 py-6 text-center text-gray-400">No hay movimientos registrados en el historial.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+
+
+        <!-- ================================================================= -->
+        <!-- ================= VISTA 3: ÓRDENES DE COMPRA ==================== -->
+        <!-- ================================================================= -->
+        <div id="vistaOrdenesCompra" class="space-y-6" style="display: none;">
+            
+            <!-- Formulario Orden de Compra -->
+            <div class="p-5 bg-sky-50/50 rounded-3xl border border-sky-100 shadow-2xs">
+                <h2 class="text-md font-bold text-sky-900 mb-3 flex items-center gap-2">
+                    <span>🛒</span> Registrar Nueva Orden de Compra
+                </h2>
+                <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 mb-3">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Nº Orden de Compra:</label>
+                        <input type="text" id="ocNumero" placeholder="Ej. OC-001" class="w-full rounded-2xl border border-sky-200 p-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-sky-300">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Fecha Emisión:</label>
+                        <input type="date" id="ocFechaEmision" class="w-full rounded-2xl border border-sky-200 p-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-sky-300">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Proveedor:</label>
+                        <input type="text" id="ocProveedor" placeholder="Ej. Químicos Andinos SAC" class="w-full rounded-2xl border border-sky-200 p-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-sky-300">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Colorante / Producto:</label>
+                        <select id="ocProducto" class="w-full rounded-2xl border border-sky-200 p-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-sky-300">
+                            <option value="">Seleccione material...</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Cantidad Solicitada:</label>
+                        <input type="number" id="ocCantidad" placeholder="Ej. 50" class="w-full rounded-2xl border border-sky-200 p-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-sky-300">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Unidad de Medida:</label>
+                        <input type="text" id="ocUnidad" value="kg" class="w-full rounded-2xl border border-sky-200 p-2.5 text-sm bg-white">
+                    </div>
+                    <div class="flex items-end">
+                        <button onclick="registrarOrdenCompra()" class="w-full bg-sky-600 text-white p-2.5 rounded-2xl hover:bg-sky-700 text-sm font-medium shadow-xs transition">Emitir Orden de Compra</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recomendaciones automáticas de Compra y Riesgo de Abastecimiento -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                
+                <!-- Recomendación Automática -->
+                <div class="bg-white p-5 rounded-3xl border border-gray-100 shadow-2xs">
+                    <h2 class="text-md font-bold text-gray-800 mb-3 flex items-center gap-2">
+                        <span>💡</span> Recomendación Automática de Compra
+                    </h2>
+                    <div id="contenedorRecomendaciones" class="space-y-3">
+                        <p class="text-xs text-gray-400">Analizando inventario y consumo proyectado...</p>
+                    </div>
+                </div>
+
+                <!-- Riesgo de Abastecimiento -->
+                <div class="bg-white p-5 rounded-3xl border border-gray-100 shadow-2xs">
+                    <h2 class="text-md font-bold text-gray-800 mb-3 flex items-center gap-2">
+                        <span>🚦</span> Análisis de Riesgo de Abastecimiento
+                    </h2>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-100 text-xs">
+                            <thead class="bg-gray-50 text-gray-500 uppercase">
+                                <tr>
+                                    <th class="px-3 py-2 text-left">Riesgo</th>
+                                    <th class="px-3 py-2 text-left">Colorante</th>
+                                    <th class="px-3 py-2 text-right">Cobertura</th>
+                                    <th class="px-3 py-2 text-left">OC Relacionada</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tablaRiesgoAbastecimiento" class="divide-y divide-gray-100">
+                                <tr><td colspan="4" class="px-3 py-4 text-center text-gray-400">Sin datos para evaluar riesgo.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Historial de Órdenes de Compra -->
+            <div class="bg-white p-5 rounded-3xl border border-gray-100 shadow-2xs">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-md font-bold text-gray-800 flex items-center gap-2">
+                        <span>📋</span> Seguimiento e Historial de Órdenes de Compra
+                    </h2>
+                    <button onclick="exportarOrdenesExcel()" class="bg-sky-600 text-white px-4 py-2 rounded-2xl hover:bg-sky-700 text-xs font-medium shadow-xs transition flex items-center gap-1.5">
+                        <span>📥</span> Exportar Órdenes a Excel
+                    </button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-100 text-sm">
+                        <thead class="bg-gray-50 text-gray-500 uppercase text-xs">
+                            <tr>
+                                <th class="px-4 py-3 text-left">Nº OC</th>
+                                <th class="px-4 py-3 text-left">Emisión</th>
+                                <th class="px-4 py-3 text-left">Proveedor</th>
+                                <th class="px-4 py-3 text-left">Producto</th>
+                                <th class="px-4 py-3 text-right">Cantidad</th>
+                                <th class="px-4 py-3 text-left">Estado</th>
+                                <th class="px-4 py-3 text-left">Llegada Real</th>
+                                <th class="px-4 py-3 text-right">Tiempo Demora</th>
+                                <th class="px-4 py-3 text-center">Acción / Recepción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaHistorialOC" class="divide-y divide-gray-100">
+                            <tr><td colspan="9" class="px-4 py-6 text-center text-gray-400">No hay órdenes de compra emitidas.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </div>
+
+
+        <!-- ================================================================= -->
+        <!-- ================= VISTA 4: DASHBOARD ============================ -->
+        <!-- ================================================================= -->
+        <div id="vistaDashboard" class="space-y-6" style="display: none;">
+            
+            <!-- Tarjetas Resumen Superior -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="p-4 bg-pink-50/60 rounded-3xl border border-pink-100 shadow-2xs">
+                    <p class="text-xs font-medium text-pink-700">Total Colorantes</p>
+                    <p id="statTotalColorantes" class="text-2xl font-bold text-pink-900 mt-1">0</p>
+                </div>
+                <div class="p-4 bg-purple-50/60 rounded-3xl border border-purple-100 shadow-2xs">
+                    <p class="text-xs font-medium text-purple-700">En Uso Actual</p>
+                    <p id="statColorantesEnUso" class="text-2xl font-bold text-purple-900 mt-1">0</p>
+                </div>
+                <div class="p-4 bg-yellow-50/60 rounded-3xl border border-yellow-100 shadow-2xs">
+                    <p class="text-xs font-medium text-yellow-700">Próximos a Seguridad</p>
+                    <p id="statPreventivos" class="text-2xl font-bold text-yellow-900 mt-1">0</p>
+                </div>
+                <div class="p-4 bg-red-50/60 rounded-3xl border border-red-100 shadow-2xs">
+                    <p class="text-xs font-medium text-red-700">Stock Crítico</p>
+                    <p id="statCriticos" class="text-2xl font-bold text-red-900 mt-1">0</p>
+                </div>
+            </div>
+
+            <!-- Gráficos Interactivos -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                
+                <!-- Stock Actual por Colorante -->
+                <div class="bg-white p-5 rounded-3xl border border-gray-100 shadow-2xs">
+                    <h3 class="text-md font-bold text-gray-800 mb-3">📊 Stock Actual vs Stock de Seguridad</h3>
+                    <div class="relative h-72">
+                        <canvas id="chartStockActual"></canvas>
+                    </div>
+                </div>
+
+                <!-- Ranking Colorantes Más Consumidos -->
+                <div class="bg-white p-5 rounded-3xl border border-gray-100 shadow-2xs">
+                    <h3 class="text-md font-bold text-gray-800 mb-3">🏆 Top Colorantes Más Consumidos</h3>
+                    <div class="relative h-72">
+                        <canvas id="chartTopConsumo"></canvas>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                
+                <!-- Estado General del Inventario (Dona) -->
+                <div class="bg-white p-5 rounded-3xl border border-gray-100 shadow-2xs">
+                    <h3 class="text-md font-bold text-gray-800 mb-3">🟢🟡🔴 Estado General del Inventario</h3>
+                    <div class="relative h-64 flex justify-center">
+                        <canvas id="chartEstadoInventario"></canvas>
+                    </div>
+                </div>
+
+                <!-- Tiempos de Entrega de Pedidos -->
+                <div class="bg-white p-5 rounded-3xl border border-gray-100 shadow-2xs">
+                    <h3 class="text-md font-bold text-gray-800 mb-3">🚚 Control de Tiempos de Entrega (Días)</h3>
+                    <div class="relative h-64 flex justify-center">
+                        <canvas id="chartTiemposEntrega"></canvas>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ================================================================= -->
+    <!-- ================= MODAL DE CENTRO DE ALERTAS ==================== -->
+    <!-- ================================================================= -->
+    <div id="modalAlertas" class="fixed inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4 z-50" style="display: none;">
+        <div class="bg-white w-full max-w-2xl rounded-3xl p-6 shadow-xl border border-pink-100 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center border-b border-gray-100 pb-3">
+                <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+                    <span>🔔</span> Centro de Alertas y Notificaciones
+                </h3>
+                <button onclick="cerrarModalAlertas()" class="text-gray-400 hover:text-gray-600 font-bold text-lg px-2">✕</button>
+            </div>
+            
+            <div id="listaAlertasCentro" class="space-y-3">
+                <!-- Alertas dinámicas -->
+            </div>
+
+            <div class="flex justify-end pt-3 border-t border-gray-100">
+                <button onclick="cerrarModalAlertas()" class="bg-gray-200 text-gray-700 px-4 py-2 rounded-2xl hover:bg-gray-300 text-sm font-medium transition">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ================================================================= -->
+    <!-- ================= MODAL DE RECEPCIÓN DE OC ======================= -->
+    <!-- ================================================================= -->
+    <div id="modalRecepcion" class="fixed inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4 z-50" style="display: none;">
+        <div class="bg-white w-full max-w-md rounded-3xl p-6 shadow-xl border border-sky-100 space-y-4">
+            <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2">
+                <span>✅</span> Confirmar Recepción de Orden
+            </h3>
+            <input type="hidden" id="modalOcId">
+            <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Fecha Real de Llegada:</label>
+                <input type="date" id="modalFechaLlegada" class="w-full rounded-2xl border border-sky-200 p-2.5 text-sm bg-white">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Cantidad Realmente Recibida (kg):</label>
+                <input type="number" id="modalCantidadRecibida" class="w-full rounded-2xl border border-sky-200 p-2.5 text-sm bg-white">
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-600 mb-1">Observaciones o Comentarios:</label>
+                <input type="text" id="modalObservaciones" placeholder="Ej. Lote completo en perfecto estado" class="w-full rounded-2xl border border-sky-200 p-2.5 text-sm bg-white">
+            </div>
+            <div class="flex justify-end gap-2 pt-2">
+                <button onclick="cerrarModalRecepcion()" class="bg-gray-100 text-gray-600 px-4 py-2 rounded-2xl hover:bg-gray-200 text-sm font-medium">Cancelar</button>
+                <button onclick="guardarRecepcionOrden()" class="bg-emerald-600 text-white px-4 py-2 rounded-2xl hover:bg-emerald-700 text-sm font-medium">Confirmar y Sumar al Stock</button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ================================================================= -->
+    <!-- ================= SCRIPT JAVASCRIPT LÓGICA ====================== -->
+    <!-- ================================================================= -->
+    <script>
+        // Variables Globales del Sistema
+        let datosRecetas = [];
+        let inventarioBase = [];
+        let pronosticosActivos = [];
+        let consumosManuales = [];
+        let ordenesCompra = [];
+        let historialMovimientos = [];
+        let alertasSistema = [];
+
+        // Instancias de Gráficos Chart.js
+        let chartStockInstancia = null;
+        let chartTopInstancia = null;
+        let chartEstadoInstancia = null;
+        let chartTiemposInstancia = null;
+
+        // Fecha de simulación actual (se puede usar la fecha real del sistema)
+        function obtenerFechaHoy() {
+            const hoy = new Date();
+            return hoy.toISOString().split('T')[0];
+        }
+
+        // Inicializar fecha por defecto en inputs de fecha
+        window.addEventListener('DOMContentLoaded', () => {
+            const hoyStr = obtenerFechaHoy();
+            if(document.getElementById('fechaManual')) document.getElementById('fechaManual').value = hoyStr;
+            if(document.getElementById('ocFechaEmision')) document.getElementById('ocFechaEmision').value = hoyStr;
+            if(document.getElementById('modalFechaLlegada')) document.getElementById('modalFechaLlegada').value = hoyStr;
+        });
+
+        // Cambiar entre Pestañas
+        function cambiarVista(vista) {
+            document.getElementById('vistaInicio').style.display = vista === 'inicio' ? 'block' : 'none';
+            document.getElementById('vistaStockConsumo').style.display = vista === 'stockConsumo' ? 'block' : 'none';
+            document.getElementById('vistaOrdenesCompra').style.display = vista === 'ordenesCompra' ? 'block' : 'none';
+            document.getElementById('vistaDashboard').style.display = vista === 'dashboard' ? 'block' : 'none';
+
+            // Estilos de botones de navegación
+            const btnInicio = document.getElementById('navInicio');
+            const btnStock = document.getElementById('navStockConsumo');
+            const btnOc = document.getElementById('navOrdenesCompra');
+            const btnDash = document.getElementById('navDashboard');
+
+            [btnInicio, btnStock, btnOc, btnDash].forEach(b => {
+                b.className = "flex-1 py-2.5 px-4 rounded-xl font-medium text-sm bg-transparent text-gray-600 hover:bg-white transition text-center shadow-none";
+            });
+
+            if (vista === 'inicio') {
+                btnInicio.className = "flex-1 py-2.5 px-4 rounded-xl font-medium text-sm bg-pink-500 text-white shadow-xs transition text-center";
+                actualizarVistaInicio();
+            } else if (vista === 'stockConsumo') {
+                btnStock.className = "flex-1 py-2.5 px-4 rounded-xl font-medium text-sm bg-emerald-500 text-white shadow-xs transition text-center";
+                actualizarVistaStockConsumo();
+            } else if (vista === 'ordenesCompra') {
+                btnOc.className = "flex-1 py-2.5 px-4 rounded-xl font-medium text-sm bg-sky-500 text-white shadow-xs transition text-center";
+                actualizarVistaOrdenesCompra();
+            } else if (vista === 'dashboard') {
+                btnDash.className = "flex-1 py-2.5 px-4 rounded-xl font-medium text-sm bg-purple-500 text-white shadow-xs transition text-center";
+                actualizarDashboard();
+            }
+        }
+
+        // Carga de Archivo Excel BASE.xlsx
+        document.getElementById('inputExcel').addEventListener('change', function(e) {
+            const archivo = e.target.files[0];
+            if (!archivo) return;
+            const lector = new FileReader();
+            lector.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, {type: 'array'});
+                    
+                    const hojaRecetasNombre = workbook.SheetNames.find(n => n.toUpperCase().includes("RECETA"));
+                    const hojaColorantesNombre = workbook.SheetNames.find(n => n.toUpperCase().includes("COLORANTE"));
+
+                    if (!hojaRecetasNombre || !hojaColorantesNombre) {
+                        alert("El archivo Excel debe contener las hojas 'RECETAS' y 'COLORANTES' (o similares).");
+                        return;
+                    }
+
+                    datosRecetas = XLSX.utils.sheet_to_json(workbook.Sheets[hojaRecetasNombre]);
+                    let rawColorantes = XLSX.utils.sheet_to_json(workbook.Sheets[hojaColorantesNombre]);
+
+                    inventarioBase = rawColorantes.map(c => ({
+                        id: c.ID_COLORANTE || c.CODIGO || 'N/D',
+                        nombre: String(c.NOMBRE_COLORANTE || c.NOMBRE || '').trim(),
+                        stockActual: parseFloat(c.STOCK_ACTUAL || c.STOCK || 0),
+                        stockSeguridad: parseFloat(c.STOCK_SEGURIDAD || c.SEGURIDAD || 0),
+                        stockInicialRef: parseFloat(c.STOCK_ACTUAL || c.STOCK || 0)
+                    }));
+
+                    document.getElementById('estadoArchivo').innerHTML = `<b>¡Cargado con éxito!</b> ${inventarioBase.length} colorantes y ${datosRecetas.length} recetas procesadas.`;
+                    
+                    poblarSelectsProductos();
+                    recalcularTodoElSistema();
+                } catch (error) {
+                    console.error(error);
+                    alert("Error al leer el archivo Excel. Verifique el formato.");
+                }
+            };
+            lector.readAsArrayBuffer(archivo);
+        });
+
+        function poblarSelectsProductos() {
+            const selectManual = document.getElementById('selectProductoManual');
+            const selectOC = document.getElementById('ocProducto');
+            selectManual.innerHTML = '<option value="">Seleccione material...</option>';
+            selectOC.innerHTML = '<option value="">Seleccione material...</option>';
+
+            inventarioBase.forEach(item => {
+                selectManual.innerHTML += `<option value="${item.nombre}">${item.nombre} (Cod: ${item.id})</option>`;
+                selectOC.innerHTML += `<option value="${item.nombre}">${item.nombre} (Cod: ${item.id})</option>`;
+            });
+        }
+
+        // Registrar Pronóstico de Producción
+        function registrarPronostico() {
+            if (inventarioBase.length === 0) { alert("Primero cargue el archivo BASE.xlsx"); return; }
+            const codigo = document.getElementById('codigoReceta').value.trim();
+            const kilos = parseFloat(document.getElementById('kilosTela').value) || 0;
+            
+            if (!codigo || kilos <= 0) { alert("Ingrese un código de receta válido y kilos de tela mayores a 0."); return; }
+
+            const recetaMatch = datosRecetas.filter(r => String(r.CODIGO || r.CODIGO_RECETA || '').trim() === codigo);
+            if (recetaMatch.length === 0) { alert(`No se encontró el código de receta "${codigo}" en el archivo BASE.`); return; }
+
+            const nuevoPronostico = {
+                id: Date.now(),
+                codigo: codigo,
+                kilos: kilos,
+                fecha: obtenerFechaHoy(),
+                detalle: recetaMatch
+            };
+
+            pronosticosActivos.unshift(nuevoPronostico);
+            
+            // Registrar movimiento
+            historialMovimientos.unshift({
+                fecha: obtenerFechaHoy(),
+                colorante: `Receta ${codigo} (${kilos} kg tela)`,
+                tipo: 'Consumo por pronóstico',
+                cantidad: kilos,
+                relacion: `Receta ${codigo}`,
+                motivo: 'Pronóstico de producción registrado',
+                stockPost: '-'
+            });
+
+            document.getElementById('codigoReceta').value = '';
+            document.getElementById('kilosTela').value = '';
+
+            recalcularTodoElSistema();
+            alert("¡Pronóstico de producción registrado con éxito!");
+        }
+
+        // Eliminar Pronóstico
+        function eliminarPronostico(id) {
+            if (confirm("¿Estás seguro de que deseas eliminar este pronóstico?")) {
+                pronosticosActivos = pronosticosActivos.filter(p => p.id !== id);
+                recalcularTodoElSistema();
+            }
+        }
+
+        // Registrar Consumo Adicional Manual
+        function agregarConsumoManual() {
+            if (inventarioBase.length === 0) { alert("Cargue el inventario primero."); return; }
+            const producto = document.getElementById('selectProductoManual').value;
+            const cantidad = parseFloat(document.getElementById('cantidadManual').value) || 0;
+            const unidad = document.getElementById('unidadManual').value;
+            const fecha = document.getElementById('fechaManual').value || obtenerFechaHoy();
+            const motivo = document.getElementById('motivoManual').value || 'Consumo adicional manual';
+
+            if (!producto || cantidad <= 0) { alert("Seleccione un producto y una cantidad válida."); return; }
+
+            // Descontar automáticamente del stock actual
+            const itemInv = inventarioBase.find(i => i.nombre.toUpperCase() === producto.toUpperCase());
+            if (itemInv) {
+                itemInv.stockActual -= cantidad;
+            }
+
+            consumosManuales.unshift({ id: Date.now(), producto, cantidad, unidad, fecha, motivo });
+
+            historialMovimientos.unshift({
+                fecha: fecha,
+                colorante: producto,
+                tipo: 'Consumo manual adicional',
+                cantidad: `${cantidad} ${unidad}`,
+                relacion: 'Manual',
+                motivo: motivo,
+                stockPost: itemInv ? itemInv.stockActual.toFixed(2) : '-'
+            });
+
+            document.getElementById('cantidadManual').value = '';
+            document.getElementById('motivoManual').value = '';
+
+            recalcularTodoElSistema();
+            alert("¡Consumo adicional registrado y descontado del stock!");
+        }
+
+        // Registrar Orden de Compra
+        function registrarOrdenCompra() {
+            if (inventarioBase.length === 0) { alert("Cargue el inventario primero."); return; }
+            const numero = document.getElementById('ocNumero').value.trim();
+            const fechaEmision = document.getElementById('ocFechaEmision').value || obtenerFechaHoy();
+            const proveedor = document.getElementById('ocProveedor').value.trim();
+            const producto = document.getElementById('ocProducto').value;
+            const cantidad = parseFloat(document.getElementById('ocCantidad').value) || 0;
+            const unidad = document.getElementById('ocUnidad').value;
+
+            if (!numero || !proveedor || !producto || cantidad <= 0) {
+                alert("Complete todos los campos obligatorios de la Orden de Compra.");
+                return;
+            }
+
+            const nuevaOC = {
+                id: Date.now(),
+                numero,
+                fechaEmision,
+                proveedor,
+                producto,
+                cantidad,
+                unidad,
+                estado: 'Pendiente',
+                fechaLlegada: '-',
+                demoraDias: '-'
+            };
+
+            ordenesCompra.unshift(nuevaOC);
+
+            document.getElementById('ocNumero').value = '';
+            document.getElementById('ocProveedor').value = '';
+            document.getElementById('ocCantidad').value = '';
+
+            recalcularTodoElSistema();
+            alert(`Orden de compra ${numero} emitida con éxito.`);
+        }
+
+        // Abrir Modal de Recepción
+        function abrirModalRecepcion(id) {
+            document.getElementById('modalOcId').value = id;
+            const oc = ordenesCompra.find(o => o.id === id);
+            if (oc) {
+                document.getElementById('modalCantidadRecibida').value = oc.cantidad;
+            }
+            document.getElementById('modalRecepcion').style.display = 'flex';
+        }
+
+        function cerrarModalRecepcion() {
+            document.getElementById('modalRecepcion').style.display = 'none';
+        }
+
+        // Guardar Recepción de Orden (Suma al Stock y Calcula Tiempos)
+        function guardarRecepcionOrden() {
+            const id = parseInt(document.getElementById('modalOcId').value);
+            const fechaLlegada = document.getElementById('modalFechaLlegada').value || obtenerFechaHoy();
+            const cantidadReal = parseFloat(document.getElementById('modalCantidadRecibida').value) || 0;
+            const obs = document.getElementById('modalObservaciones').value || 'Sin observaciones';
+
+            const oc = ordenesCompra.find(o => o.id === id);
+            if (!oc) return;
+
+            oc.estado = 'Recibida';
+            oc.fechaLlegada = fechaLlegada;
+
+            // Calcular tiempo de entrega en días
+            const d1 = new Date(oc.fechaEmision);
+            const d2 = new Date(fechaLlegada);
+            const diffTime = Math.abs(d2 - d1);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            oc.demoraDias = diffDays;
+
+            // Actualizar inventario: Stock Actual = Stock Actual + Cantidad Recibida
+            const itemInv = inventarioBase.find(i => i.nombre.toUpperCase() === oc.producto.toUpperCase());
+            if (itemInv) {
+                itemInv.stockActual += cantidadReal;
+            }
+
+            // Registrar en historial de movimientos
+            historialMovimientos.unshift({
+                fecha: fechaLlegada,
+                colorante: oc.producto,
+                tipo: 'Ingreso por orden de compra',
+                cantidad: `+${cantidadReal} ${oc.unidad}`,
+                relacion: `OC: ${oc.numero}`,
+                motivo: `Recibido de ${oc.proveedor}. ${obs}`,
+                stockPost: itemInv ? itemInv.stockActual.toFixed(2) : '-'
+            });
+
+            cerrarModalRecepcion();
+            recalcularTodoElSistema();
+            alert(`¡Orden ${oc.numero} marcada como recibida! Se han sumado ${cantidadReal} ${oc.unidad} al stock actual.`);
+        }
+
+
+        // ================================================================= //
+        // ================= MOTOR DE CÁLCULO Y ACTUALIZACIÓN ============== //
+        // ================================================================= //
+        function recalcularTodoElSistema() {
+            if (inventarioBase.length === 0) return;
+
+            // 1. Mapear consumo total proyectado por colorante
+            let consumoProyectadoMap = {};
+            inventarioBase.forEach(item => consumoProyectadoMap[item.nombre] = 0);
+
+            // Sumar por pronósticos y recetas
+            pronosticosActivos.forEach(p => {
+                p.detalle.forEach(r => {
+                    const nombreClave = String(r.COLORANTES || r.NOMBRE_COLORANTE || '').trim();
+                    const porcentaje = parseFloat(r.PORCENTAJE || r.DOSIS || 0);
+                    const cantidadConsumida = p.kilos * porcentaje;
+                    if (consumoProyectadoMap[nombreClave] !== undefined) {
+                        consumoProyectadoMap[nombreClave] += cantidadConsumida;
+                    }
+                });
+            });
+
+            // Sumar consumos manuales adicionales
+            consumosManuales.forEach(cm => {
+                if (consumoProyectadoMap[cm.producto] !== undefined) {
+                    consumoProyectadoMap[cm.producto] += cm.cantidad;
+                }
+            });
+
+            // 2. Generar Alertas Automáticas y Centro de Alertas
+            alertasSistema = [];
+            const hoyObj = new Date();
+
+            // Evaluar órdenes de compra pendientes y retrasadas (regla: si no llega al día siguiente)
+            ordenesCompra.forEach(oc => {
+                if (oc.estado === 'Pendiente') {
+                    const fechaEmis = new Date(oc.fechaEmision);
+                    const diffTime = hoyObj - fechaEmis;
+                    const diasPendiente = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+                    if (diasPendiente >= 1) {
+                        oc.diasPendiente = diasPendiente;
+                        const tipoAlerta = diasPendiente > 3 ? '🔴 Entrega muy retrasada' : '🟠 Entrega atrasada';
+                        alertasSistema.push({
+                            tipo: tipoAlerta,
+                            titulo: `Pedido pendiente sin entrega: ${oc.numero}`,
+                            descripcion: `La orden ${oc.numero} emitida el ${oc.fechaEmision} a ${oc.proveedor} para ${oc.producto} (${oc.cantidad} ${oc.unidad}) lleva ${diasPendiente} día(s) pendiente.`
+                        });
+                    } else {
+                        alertasSistema.push({
+                            tipo: '🟡 Pendiente',
+                            titulo: `Orden de compra emitida: ${oc.numero}`,
+                            descripcion: `Orden ${oc.numero} para ${oc.producto} en plazo normal de entrega.`
+                        });
+                    }
+                }
+            });
+
+            // Evaluar estado de inventario de cada colorante
+            inventarioBase.forEach(item => {
+                const consumoTotal = consumoProyectadoMap[item.nombre] || 0;
+                const stockRestante = item.stockActual - consumoTotal;
+
+                if (stockRestante <= item.stockSeguridad) {
+                    if (stockRestante <= 0) {
+                        alertasSistema.push({
+                            tipo: '🔴 Stock crítico',
+                            titulo: `Quiebre de stock: ${item.nombre}`,
+                            descripcion: `El stock restante proyectado (${stockRestante.toFixed(2)} kg) ha alcanzado el nivel crítico o agotamiento (Seguridad: ${item.stockSeguridad} kg).`
+                        });
+                    } else {
+                        alertasSistema.push({
+                            tipo: '🟡 Stock preventivo',
+                            titulo: `Stock próximo a seguridad: ${item.nombre}`,
+                            descripcion: `El stock restante (${stockRestante.toFixed(2)} kg) está en o por debajo del stock de seguridad (${item.stockSeguridad} kg).`
+                        });
+                    }
+                }
+            });
+
+            // Actualizar interfaz según la vista activa
+            actualizarVistaInicio(consumoProyectadoMap);
+            actualizarVistaStockConsumo(consumoProyectadoMap);
+            actualizarVistaOrdenesCompra();
+            actualizarBadgeAlertas();
+        }
+
+
+        // ================================================================= //
+        // ================= RENDERIZADO DE VISTAS ========================= //
+        // ================================================================= //
+
+        function actualizarVistaInicio(consumoMap = {}) {
+            // 1. Renderizar pronósticos activos
+            const tablaPronosticos = document.getElementById('tablaPronosticosActivos');
+            if (pronosticosActivos.length === 0) {
+                tablaPronosticos.html = `<tr><td colspan="4" class="px-4 py-6 text-center text-gray-400">No hay pronósticos activos registrados.</td></tr>`;
+                tablaPronosticos.innerHTML = tablaPronosticos.html;
+            } else {
+                tablaPronosticos.innerHTML = pronosticosActivos.map(p => `
+                    <tr>
+                        <td class="px-4 py-3 font-semibold text-purple-900">${p.codigo}</td>
+                        <td class="px-4 py-3 text-right">${p.kilos} kg</td>
+                        <td class="px-4 py-3 text-gray-500">${p.fecha}</td>
+                        <td class="px-4 py-3 text-center">
+                            <button onclick="eliminarPronostico(${p.id})" class="bg-red-100 text-red-700 px-3 py-1 rounded-xl text-xs hover:bg-red-200 transition font-medium">Eliminar</button>
+                        </td>
+                    </tr>
+                `).join('');
+            }
+
+            // 2. Renderizar colorantes en uso actual (excluir los que no tienen consumo)
+            const tablaUso = document.getElementById('tablaColorantesEnUso');
+            let filasUsoHtml = '';
+            let contadorUso = 0;
+
+            inventarioBase.forEach(item => {
+                const consumo = consumoMap[item.nombre] || 0;
+                if (consumo > 0 || pronosticosActivos.length > 0) { // Mostrar si hay pronósticos o consumo
+                    contadorUso++;
+                    const stockRestante = item.stockActual - consumo;
+                    
+                    let estadoBadge = '';
+                    if (stockRestante <= item.stockSeguridad) {
+                        estadoBadge = `<span class="px-2.5 py-1 text-xs rounded-full bg-red-100 text-red-800 font-semibold">🔴 Crítico</span>`;
+                    } else if (stockRestante <= item.stockSeguridad * 1.25) {
+                        estadoBadge = `<span class="px-2.5 py-1 text-xs rounded-full bg-yellow-100 text-yellow-800 font-semibold">🟡 Preventivo</span>`;
+                    } else {
+                        estadoBadge = `<span class="px-2.5 py-1 text-xs rounded-full bg-emerald-100 text-emerald-800 font-semibold">🟢 Suficiente</span>`;
+                    }
+
+                    filasUsoHtml += `
+                        <tr>
+                            <td class="px-4 py-3">${estadoBadge}</td>
+                            <td class="px-4 py-3 font-semibold text-gray-800">${item.id}</td>
+                            <td class="px-4 py-3 text-gray-700">${item.nombre}</td>
+                            <td class="px-4 py-3 text-right">${item.stockActual.toFixed(2)} kg</td>
+                            <td class="px-4 py-3 text-right text-pink-600 font-bold">${consumo.toFixed(2)} kg</td>
+                            <td class="px-4 py-3 text-right font-bold ${stockRestante <= item.stockSeguridad ? 'text-red-600' : 'text-gray-800'}">${stockRestante.toFixed(2)} kg</td>
+                            <td class="px-4 py-3 text-right text-gray-500">${item.stockSeguridad} kg</td>
+                        </tr>
+                    `;
+                }
+            });
+
+            if (contadorUso === 0 || pronosticosActivos.length === 0) {
+                tablaUso.innerHTML = `<tr><td colspan="7" class="px-4 py-6 text-center text-gray-400">Agregue pronósticos de producción para visualizar los colorantes en uso.</td></tr>`;
+            } else {
+                tablaUso.innerHTML = filasUsoHtml;
+            }
+        }
+
+        function actualizarVistaStockConsumo(consumoMap = {}) {
+            // 1. Inventario completo
+            const tablaInv = document.getElementById('tablaInventarioCompleto');
+            tablaInv.innerHTML = inventarioBase.map(item => {
+                const consumo = consumoMap[item.nombre] || 0;
+                const restante = item.stockActual - consumo;
+
+                let estadoTxt = '🟢 Suficiente';
+                let claseEstado = 'bg-emerald-100 text-emerald-800';
+                if (restante <= item.stockSeguridad) {
+                    estadoTxt = '🔴 Crítico';
+                    claseEstado = 'bg-red-100 text-red-800';
+                } else if (restante <= item.stockSeguridad * 1.25) {
+                    estadoTxt = '🟡 Preventivo';
+                    claseEstado = 'bg-yellow-100 text-yellow-800';
+                }
+
+                return `
+                    <tr>
+                        <td class="px-4 py-3 font-semibold">${item.id}</td>
+                        <td class="px-4 py-3">${item.nombre}</td>
+                        <td class="px-4 py-3 text-right">${item.stockActual.toFixed(2)} kg</td>
+                        <td class="px-4 py-3 text-right">${item.stockSeguridad} kg</td>
+                        <td class="px-4 py-3 text-right text-purple-700 font-bold">${consumo.toFixed(2)} kg</td>
+                        <td class="px-4 py-3 text-right font-bold">${restante.toFixed(2)} kg</td>
+                        <td class="px-4 py-3"><span class="px-2.5 py-1 text-xs rounded-full ${claseEstado} font-semibold">${estadoTxt}</span></td>
+                    </tr>
+                `;
+            }).join('');
+
+            // 2. Historial de movimientos
+            const tablaMov = document.getElementById('tablaHistorialMovimientos');
+            if (historialMovimientos.length === 0) {
+                tablaMov.innerHTML = `<tr><td colspan="7" class="px-4 py-6 text-center text-gray-400">No hay movimientos registrados en el historial.</td></tr>`;
+            } else {
+                tablaMov.innerHTML = historialMovimientos.map(m => `
+                    <tr>
+                        <td class="px-4 py-3 text-gray-500">${m.fecha}</td>
+                        <td class="px-4 py-3 font-semibold text-gray-800">${m.colorante}</td>
+                        <td class="px-4 py-3"><span class="px-2 py-0.5 text-xs rounded-full bg-sky-100 text-sky-800">${m.tipo}</span></td>
+                        <td class="px-4 py-3 text-right font-bold">${m.cantidad}</td>
+                        <td class="px-4 py-3 text-gray-600">${m.relacion}</td>
+                        <td class="px-4 py-3 text-gray-500">${m.motivo}</td>
+                        <td class="px-4 py-3 text-right font-semibold">${m.stockPost}</td>
+                    </tr>
+                `).join('');
+            }
+        }
+
+        function actualizarVistaOrdenesCompra() {
+            // 1. Historial / Seguimiento de OC
+            const tablaOC = document.getElementById('tablaHistorialOC');
+            if (ordenesCompra.length === 0) {
+                tablaOC.innerHTML = `<tr><td colspan="9" class="px-4 py-6 text-center text-gray-400">No hay órdenes de compra emitidas.</td></tr>`;
+            } else {
+                tablaOC.innerHTML = ordenesCompra.map(oc => {
+                    let estadoBadge = oc.estado === 'Recibida' ? 
+                        `<span class="px-2.5 py-1 text-xs rounded-full bg-emerald-100 text-emerald-800 font-semibold">🟢 Recibida</span>` :
+                        `<span class="px-2.5 py-1 text-xs rounded-full bg-yellow-100 text-yellow-800 font-semibold">🟡 Pendiente</span>`;
+
+                    let botonAccion = oc.estado === 'Pendiente' ?
+                        `<button onclick="abrirModalRecepcion(${oc.id})" class="bg-emerald-600 text-white px-3 py-1 rounded-xl text-xs hover:bg-emerald-700 transition font-medium">✅ Marcar Recibido</button>` :
+                        `<span class="text-xs text-gray-400">Completado</span>`;
+
+                    return `
+                        <tr>
+                            <td class="px-4 py-3 font-semibold text-sky-900">${oc.numero}</td>
+                            <td class="px-4 py-3 text-gray-500">${oc.fechaEmision}</td>
+                            <td class="px-4 py-3">${oc.proveedor}</td>
+                            <td class="px-4 py-3 font-medium">${oc.producto}</td>
+                            <td class="px-4 py-3 text-right">${oc.cantidad} ${oc.unidad}</td>
+                            <td class="px-4 py-3">${estadoBadge}</td>
+                            <td class="px-4 py-3 text-gray-600">${oc.fechaLlegada}</td>
+                            <td class="px-4 py-3 text-right font-semibold">${oc.demoraDias !== '-' ? oc.demoraDias + ' días' : '-'}</td>
+                            <td class="px-4 py-3 text-center">${botonAccion}</td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+
+            // 2. Recomendaciones automáticas de compra
+            const contenedorRec = document.getElementById('contenedorRecomendaciones');
+            let recHtml = '';
+            inventarioBase.forEach(item => {
+                if (item.stockActual <= item.stockSeguridad * 1.5) {
+                    recHtml += `
+                        <div class="p-3 bg-yellow-50/70 border border-yellow-200 rounded-2xl text-xs text-yellow-900 flex justify-between items-center">
+                            <div>
+                                <b>${item.nombre}</b> (Stock: ${item.stockActual} kg | Seguridad: ${item.stockSeguridad} kg).
+                                <p class="text-[11px] text-yellow-700 mt-0.5">Se recomienda emitir una nueva orden de compra para evitar quiebre.</p>
+                            </div>
+                            <button onclick="autocompletarOC('${item.nombre}')" class="bg-yellow-600 text-white px-2.5 py-1.5 rounded-xl hover:bg-yellow-700 font-medium">Pedir</button>
+                        </div>
+                    `;
+                }
+            });
+            contenedorRec.innerHTML = recHtml || `<p class="text-xs text-emerald-600 font-medium">🟢 Todos los inventarios se encuentran en niveles seguros. No se requieren compras urgentes.</p>`;
+
+            // 3. Análisis de Riesgo de Abastecimiento
+            const tablaRiesgo = document.getElementById('tablaRiesgoAbastecimiento');
+            let riesgoHtml = '';
+            inventarioBase.forEach(item => {
+                let nivelRiesgo = '🟢 Riesgo bajo';
+                let claseRiesgo = 'bg-emerald-100 text-emerald-800';
+                if (item.stockActual <= item.stockSeguridad) {
+                    nivelRiesgo = '🔴 Riesgo alto';
+                    claseRiesgo = 'bg-red-100 text-red-800';
+                } else if (item.stockActual <= item.stockSeguridad * 1.3) {
+                    nivelRiesgo = '🟡 Riesgo medio';
+                    claseRiesgo = 'bg-yellow-100 text-yellow-800';
+                }
+
+                const ocPendiente = ordenesCompra.find(o => o.producto.toUpperCase() === item.nombre.toUpperCase() && o.estado === 'Pendiente');
+
+                riesgoHtml += `
+                    <tr>
+                        <td class="px-3 py-2"><span class="px-2 py-0.5 text-[10px] rounded-full ${claseRiesgo} font-semibold">${nivelRiesgo}</span></td>
+                        <td class="px-3 py-2 font-medium">${item.nombre}</td>
+                        <td class="px-3 py-2 text-right">${item.stockActual} kg</td>
+                        <td class="px-3 py-2 text-gray-500">${ocPendiente ? ocPendiente.numero + ' (' + ocPendiente.diasPendiente + 'd)' : 'Sin OC'}</td>
+                    </tr>
+                `;
+            });
+            tablaRiesgo.innerHTML = riesgoHtml;
+        }
+
+        function autocompletarOC(nombreColorante) {
+            cambiarVista('ordenesCompra');
+            document.getElementById('ocProducto').value = nombreColorante;
+            document.getElementById('ocNumero').value = 'OC-' + Math.floor(Math.random() * 900 + 100);
+            document.getElementById('ocCantidad').value = 50;
+        }
+
+        function actualizarDashboard() {
+            // Tarjetas Resumen
+            document.getElementById('statTotalColorantes').innerText = inventarioBase.length;
+            document.getElementById('statColorantesEnUso').innerText = inventarioBase.filter(i => i.stockActual > 0).length;
+            
+            let preventivos = 0;
+            let criticos = 0;
+            inventarioBase.forEach(i => {
+                if (i.stockActual <= i.stockSeguridad) criticos++;
+                else if (i.stockActual <= i.stockSeguridad * 1.3) preventivos++;
+            });
+            document.getElementById('statPreventivos').innerText = preventivos;
+            document.getElementById('statCriticos').innerText = criticos;
+
+            // Gráfico 1: Stock Actual vs Seguridad
+            const ctxStock = document.getElementById('chartStockActual').getContext('2d');
+            if (chartStockInstancia) chartStockInstancia.destroy();
+            chartStockInstancia = new Chart(ctxStock, {
+                type: 'bar',
+                data: {
+                    labels: inventarioBase.slice(0, 8).map(i => i.nombre),
+                    datasets: [
+                        { label: 'Stock Actual (kg)', data: inventarioBase.slice(0, 8).map(i => i.stockActual), backgroundColor: '#38bdf8' },
+                        { label: 'Stock Seguridad (kg)', data: inventarioBase.slice(0, 8).map(i => i.stockSeguridad), backgroundColor: '#f472b6' }
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+
+            // Gráfico 2: Top Consumo
+            const ctxTop = document.getElementById('chartTopConsumo').getContext('2d');
+            if (chartTopInstancia) chartTopInstancia.destroy();
+            chartTopInstancia = new Chart(ctxTop, {
+                type: 'doughnut',
+                data: {
+                    labels: inventarioBase.slice(0, 5).map(i => i.nombre),
+                    datasets: [{
+                        data: inventarioBase.slice(0, 5).map(i => Math.max(1, i.stockSeguridad)),
+                        backgroundColor: ['#f472b6', '#c084fc', '#38bdf8', '#34d399', '#facc15']
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+
+            // Gráfico 3: Estado General Inventario
+            const sufic = inventarioBase.length - preventivos - criticos;
+            const ctxEstado = document.getElementById('chartEstadoInventario').getContext('2d');
+            if (chartEstadoInstancia) chartEstadoInstancia.destroy();
+            chartEstadoInstancia = new Chart(ctxEstado, {
+                type: 'pie',
+                data: {
+                    labels: ['Suficiente', 'Preventivo', 'Crítico'],
+                    datasets: [{
+                        data: [Math.max(0, sufic), preventivos, criticos],
+                        backgroundColor: ['#34d399', '#facc15', '#f87171']
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+
+            // Gráfico 4: Tiempos de Entrega
+            const recibidas = ordenesCompra.filter(o => o.estado === 'Recibida');
+            const ctxTiempos = document.getElementById('chartTiemposEntrega').getContext('2d');
+            if (chartTiemposInstancia) chartTiemposInstancia.destroy();
+            chartTiemposInstancia = new Chart(ctxTiempos, {
+                type: 'bar',
+                data: {
+                    labels: recibidas.length > 0 ? recibidas.map(o => o.numero) : ['Sin datos'],
+                    datasets: [{
+                        label: 'Días de demora',
+                        data: recibidas.length > 0 ? recibidas.map(o => o.demoraDias) : [0],
+                        backgroundColor: '#c084fc'
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+        }
+
+
+        // ================================================================= //
+        // ================= CENTRO DE ALERTAS MODAL ======================= //
+        // ================================================================= //
+        function actualizarBadgeAlertas() {
+            const badge = document.getElementById('badgeAlertas');
+            if (alertasSistema.length > 0) {
+                badge.innerText = alertasSistema.length;
+                badge.style.display = 'inline-block';
+            } else {
+                badge.style.display = 'none';
+            }
+        }
+
+        function abrirModalAlertas() {
+            const lista = document.getElementById('listaAlertasCentro');
+            if (alertasSistema.length === 0) {
+                lista.innerHTML = `<p class="text-sm text-gray-500 text-center py-4">🟢 No hay alertas pendientes en el sistema. Todo marcha en orden.</p>`;
+            } else {
+                lista.innerHTML = alertasSistema.map(a => `
+                    <div class="p-3.5 rounded-2xl border ${a.tipo.includes('🔴') ? 'bg-red-50 border-red-200 text-red-900' : (a.tipo.includes('🟠') ? 'bg-orange-50 border-orange-200 text-orange-900' : 'bg-yellow-50 border-yellow-200 text-yellow-900')}">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="font-bold text-sm">${a.titulo}</span>
+                            <span class="text-xs px-2 py-0.5 rounded-full bg-white font-semibold">${a.tipo}</span>
+                        </div>
+                        <p class="text-xs opacity-95">${a.descripcion}</p>
+                    </div>
+                `).join('');
+            }
+            document.getElementById('modalAlertas').style.display = 'flex';
+        }
+
+        function cerrarModalAlertas() {
+            document.getElementById('modalAlertas').style.display = 'none';
+        }
+
+
+        // ================================================================= //
+        // ================= EXPORTACIONES A EXCEL ========================= //
+        // ================================================================= //
+        function exportarStockExcel() {
+            if (inventarioBase.length === 0) { alert("No hay datos de inventario para exportar."); return; }
+            const ws = XLSX.utils.json_to_sheet(inventarioBase);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Inventario_Stock");
+            XLSX.writeFile(wb, "Reporte_Stock_Colorantes.xlsx");
+        }
+
+        function exportarOrdenesExcel() {
+            if (ordenesCompra.length === 0) { alert("No hay órdenes de compra para exportar."); return; }
+            const ws = XLSX.utils.json_to_sheet(ordenesCompra);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Ordenes_Compra");
+            XLSX.writeFile(wb, "Reporte_Ordenes_Compra.xlsx");
+        }
+    </script>
+</body>
+</html>
